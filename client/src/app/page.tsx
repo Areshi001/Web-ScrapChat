@@ -9,6 +9,7 @@ interface SearchInfo {
   stages: string[];
   query: string;
   urls: string[];
+  images?: string[];
 }
 
 interface Message {
@@ -31,10 +32,27 @@ const Home = () => {
   ]);
   const [currentMessage, setCurrentMessage] = useState("");
   const [checkpointId, setCheckpointId] = useState<string | null>(null);
+  const [tokenUsage, setTokenUsage] = useState({ prompt: 0, completion: 0 });
+
+  const TOKEN_LIMIT = 15000;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (currentMessage.trim()) {
+      const totalUsed = tokenUsage.prompt + tokenUsage.completion;
+      if (totalUsed >= TOKEN_LIMIT) {
+        setMessages(prev => [
+          ...prev,
+          {
+            id: prev.length > 0 ? Math.max(...prev.map(msg => msg.id)) + 1 : 1,
+            content: "⚠️ **Token usage limit reached (15,000 max).** Please host your own container or reset the session to continue.",
+            isUser: false,
+            type: 'message'
+          }
+        ]);
+        return;
+      }
+
       // First add the user message to the chat
       const newMessageId = messages.length > 0 ? Math.max(...messages.map(msg => msg.id)) + 1 : 1;
 
@@ -65,22 +83,32 @@ const Home = () => {
             searchInfo: {
               stages: [],
               query: "",
-              urls: []
+              urls: [],
+              images: []
             }
           }
         ]);
 
-        // Create URL with checkpoint ID if it exists
+        // Create URL with checkpoint ID and optional user credentials if they exist
         const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-        let url = `${apiBase}/chat_stream/${encodeURIComponent(userInput)}`;
-        if (checkpointId) {
-          url += `?checkpoint_id=${encodeURIComponent(checkpointId)}`;
-        }
+        const params = new URLSearchParams();
+        if (checkpointId) params.append("checkpoint_id", checkpointId);
+        
+        const localOrKey = typeof window !== 'undefined' ? localStorage.getItem("scrapchat_openrouter_key") : null;
+        const localModel = typeof window !== 'undefined' ? localStorage.getItem("scrapchat_model_name") : null;
+        const localTavKey = typeof window !== 'undefined' ? localStorage.getItem("scrapchat_tavily_key") : null;
+        
+        if (localOrKey) params.append("openrouter_key", localOrKey);
+        if (localModel) params.append("model_name", localModel);
+        if (localTavKey) params.append("tavily_key", localTavKey);
+        
+        const queryString = params.toString();
+        const url = `${apiBase}/chat_stream/${encodeURIComponent(userInput)}${queryString ? `?${queryString}` : ""}`;
 
         // Connect to SSE endpoint using EventSource
         const eventSource = new EventSource(url);
         let streamedContent = "";
-        let searchData = null;
+        let searchData: SearchInfo | null = null;
         let hasReceivedContent = false;
 
         // Process incoming messages
@@ -91,6 +119,12 @@ const Home = () => {
             if (data.type === 'checkpoint') {
               // Store the checkpoint ID for future requests
               setCheckpointId(data.checkpoint_id);
+            }
+            else if (data.type === 'usage') {
+              setTokenUsage(prev => ({
+                prompt: prev.prompt + (data.prompt_tokens || 0),
+                completion: prev.completion + (data.completion_tokens || 0)
+              }));
             }
             else if (data.type === 'content') {
               streamedContent += data.content;
@@ -107,10 +141,11 @@ const Home = () => {
             }
             else if (data.type === 'search_start') {
               // Create search info with 'searching' stage
-              const newSearchInfo = {
+              const newSearchInfo: SearchInfo = {
                 stages: ['searching'],
                 query: data.query,
-                urls: []
+                urls: [],
+                images: []
               };
               searchData = newSearchInfo;
 
@@ -129,10 +164,11 @@ const Home = () => {
                 const urls = typeof data.urls === 'string' ? JSON.parse(data.urls) : data.urls;
 
                 // Update search info to add 'reading' stage (don't replace 'searching')
-                const newSearchInfo = {
+                const newSearchInfo: SearchInfo = {
                   stages: searchData ? [...searchData.stages, 'reading'] : ['reading'],
                   query: searchData?.query || "",
-                  urls: urls
+                  urls: urls,
+                  images: searchData?.images || []
                 };
                 searchData = newSearchInfo;
 
@@ -148,14 +184,37 @@ const Home = () => {
                 console.error("Error parsing search results:", err);
               }
             }
+            else if (data.type === 'search_images') {
+              try {
+                const images = typeof data.images === 'string' ? JSON.parse(data.images) : data.images;
+                const newSearchInfo: SearchInfo = {
+                  stages: searchData ? searchData.stages : [],
+                  query: searchData?.query || "",
+                  urls: searchData?.urls || [],
+                  images: images
+                };
+                searchData = newSearchInfo;
+
+                setMessages(prev =>
+                  prev.map(msg =>
+                    msg.id === aiResponseId
+                      ? { ...msg, searchInfo: newSearchInfo, isLoading: false }
+                      : msg
+                  )
+                );
+              } catch (err) {
+                console.error("Error parsing search images:", err);
+              }
+            }
             else if (data.type === 'search_error') {
               // Handle search error
-              const newSearchInfo = {
+              const newSearchInfo: SearchInfo = {
                 stages: searchData ? [...searchData.stages, 'error'] : ['error'],
                 query: searchData?.query || "",
                 error: data.error,
-                urls: []
-              };
+                urls: [],
+                images: searchData?.images || []
+              } as any;
               searchData = newSearchInfo;
 
               setMessages(prev =>
@@ -235,7 +294,7 @@ const Home = () => {
 
       {/* Main container */}
       <div className="w-full max-w-5xl bg-[#121124]/40 backdrop-blur-xl flex flex-col rounded-2xl shadow-2xl border border-white/[0.07] overflow-hidden h-[92vh] transition-all duration-300">
-        <Header />
+        <Header tokenUsage={tokenUsage} tokenLimit={TOKEN_LIMIT} />
         <MessageArea messages={messages} />
         <InputBar currentMessage={currentMessage} setCurrentMessage={setCurrentMessage} onSubmit={handleSubmit} />
       </div>

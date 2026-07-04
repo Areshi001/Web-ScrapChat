@@ -99,6 +99,34 @@ const PremiumTypingAnimation = () => {
     );
 };
 
+const ImageGallery = ({ images }: { images?: string[] }) => {
+    if (!images || images.length === 0) return null;
+    return (
+        <div className="mb-4 mt-2 ml-2 select-none">
+            <div className="text-[10px] text-gray-400 font-semibold tracking-wider mb-2 flex items-center gap-1.5 uppercase">
+                <svg className="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                RELEVANT IMAGES
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-white/10 max-w-full">
+                {images.map((src, index) => (
+                    <a key={index} href={src} target="_blank" rel="noopener noreferrer" className="flex-none relative w-28 h-20 bg-white/5 border border-white/10 rounded-lg overflow-hidden group cursor-pointer transition-all duration-300 hover:scale-[1.03] hover:border-purple-500/30">
+                        <img 
+                            src={src} 
+                            alt={`Scraped visual ${index + 1}`} 
+                            className="w-full h-full object-cover opacity-85 group-hover:opacity-100 transition-opacity duration-300"
+                            onError={(e) => {
+                                (e.target as HTMLElement).style.display = 'none';
+                            }}
+                        />
+                    </a>
+                ))}
+            </div>
+        </div>
+    );
+};
+
 const SearchStages = ({ searchInfo }) => {
     if (!searchInfo || !searchInfo.stages || searchInfo.stages.length === 0) return null;
 
@@ -119,7 +147,7 @@ const SearchStages = ({ searchInfo }) => {
                             </span>
                             <div className="flex flex-wrap gap-2 mt-1.5">
                                 <div className="bg-white/5 text-[11px] text-purple-300 px-2.5 py-1 rounded-lg border border-purple-500/20 inline-flex items-center">
-                                    <svg className="w-3 h-3 mr-1 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <svg className="w-3.5 h-3.5 mr-1 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                                     </svg>
                                     {searchInfo.query}
@@ -199,7 +227,10 @@ const MessageArea = ({ messages }) => {
                         <div className="flex flex-col max-w-[85%] sm:max-w-[75%] space-y-1">
                             {/* Search Status Display - Above response */}
                             {!message.isUser && message.searchInfo && (
-                                <SearchStages searchInfo={message.searchInfo} />
+                                <>
+                                    <SearchStages searchInfo={message.searchInfo} />
+                                    <ImageGallery images={message.searchInfo.images} />
+                                </>
                             )}
 
                             {/* Message Content Bubble */}
