@@ -32,26 +32,10 @@ const Home = () => {
   ]);
   const [currentMessage, setCurrentMessage] = useState("");
   const [checkpointId, setCheckpointId] = useState<string | null>(null);
-  const [tokenUsage, setTokenUsage] = useState({ prompt: 0, completion: 0 });
-
-  const TOKEN_LIMIT = 15000;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (currentMessage.trim()) {
-      const totalUsed = tokenUsage.prompt + tokenUsage.completion;
-      if (totalUsed >= TOKEN_LIMIT) {
-        setMessages(prev => [
-          ...prev,
-          {
-            id: prev.length > 0 ? Math.max(...prev.map(msg => msg.id)) + 1 : 1,
-            content: "⚠️ **Token usage limit reached (15,000 max).** Please host your own container or reset the session to continue.",
-            isUser: false,
-            type: 'message'
-          }
-        ]);
-        return;
-      }
 
       // First add the user message to the chat
       const newMessageId = messages.length > 0 ? Math.max(...messages.map(msg => msg.id)) + 1 : 1;
@@ -96,14 +80,6 @@ const Home = () => {
         const params = new URLSearchParams();
         if (checkpointId) params.append("checkpoint_id", checkpointId);
         
-        const localOrKey = typeof window !== 'undefined' ? localStorage.getItem("scrapchat_openrouter_key") : null;
-        const localModel = typeof window !== 'undefined' ? localStorage.getItem("scrapchat_model_name") : null;
-        const localTavKey = typeof window !== 'undefined' ? localStorage.getItem("scrapchat_tavily_key") : null;
-        
-        if (localOrKey) params.append("openrouter_key", localOrKey);
-        if (localModel) params.append("model_name", localModel);
-        if (localTavKey) params.append("tavily_key", localTavKey);
-        
         const queryString = params.toString();
         const url = `${apiBase}/chat_stream/${encodeURIComponent(userInput)}${queryString ? `?${queryString}` : ""}`;
 
@@ -122,12 +98,7 @@ const Home = () => {
               // Store the checkpoint ID for future requests
               setCheckpointId(data.checkpoint_id);
             }
-            else if (data.type === 'usage') {
-              setTokenUsage(prev => ({
-                prompt: prev.prompt + (data.prompt_tokens || 0),
-                completion: prev.completion + (data.completion_tokens || 0)
-              }));
-            }
+
             else if (data.type === 'content') {
               streamedContent += data.content;
               hasReceivedContent = true;
@@ -296,7 +267,7 @@ const Home = () => {
 
       {/* Main container */}
       <div className="w-full max-w-5xl bg-[#121124]/40 backdrop-blur-xl flex flex-col rounded-2xl shadow-2xl border border-white/[0.07] overflow-hidden h-[92vh] transition-all duration-300">
-        <Header tokenUsage={tokenUsage} tokenLimit={TOKEN_LIMIT} />
+        <Header />
         <MessageArea messages={messages} />
         <InputBar currentMessage={currentMessage} setCurrentMessage={setCurrentMessage} onSubmit={handleSubmit} />
       </div>
