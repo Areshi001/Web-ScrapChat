@@ -3,7 +3,7 @@
 import Header from '@/components/Header';
 import InputBar from '@/components/InputBar';
 import MessageArea from '@/components/MessageArea';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface SearchInfo {
   stages: string[];
@@ -32,6 +32,22 @@ const Home = () => {
   ]);
   const [currentMessage, setCurrentMessage] = useState("");
   const [checkpointId, setCheckpointId] = useState<string | null>(null);
+  const [isDarkMode, setIsDarkMode] = useState(true);
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("scrapchat_theme");
+    if (savedTheme === "light") {
+      setIsDarkMode(false);
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    setIsDarkMode(prev => {
+      const newVal = !prev;
+      localStorage.setItem("scrapchat_theme", newVal ? "dark" : "light");
+      return newVal;
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -260,16 +276,25 @@ const Home = () => {
   };
 
   return (
-    <div className="relative flex items-center justify-center min-h-screen py-6 px-4 bg-gradient-to-tr from-[#08070e] via-[#0b0a14] to-[#141226]">
+    <div className={`relative flex items-center justify-center min-h-screen py-8 px-6 transition-colors duration-300 ${isDarkMode ? 'bg-gradient-to-tr from-[#08070e] via-[#0b0a14] to-[#141226]' : 'bg-gradient-to-tr from-[#f3f4f6] via-[#f9fafb] to-[#e5e7eb]'}`}>
       {/* Ambient glow backgrounds */}
-      <div className="absolute top-[15%] left-[25%] w-[250px] h-[250px] bg-purple-600/15 rounded-full blur-[100px] pointer-events-none"></div>
-      <div className="absolute bottom-[15%] right-[25%] w-[300px] h-[300px] bg-blue-600/10 rounded-full blur-[110px] pointer-events-none"></div>
+      {isDarkMode ? (
+        <>
+          <div className="absolute top-[15%] left-[25%] w-[250px] h-[250px] bg-purple-600/15 rounded-full blur-[100px] pointer-events-none"></div>
+          <div className="absolute bottom-[15%] right-[25%] w-[300px] h-[300px] bg-blue-600/10 rounded-full blur-[110px] pointer-events-none"></div>
+        </>
+      ) : (
+        <>
+          <div className="absolute top-[15%] left-[25%] w-[250px] h-[250px] bg-purple-200/40 rounded-full blur-[80px] pointer-events-none"></div>
+          <div className="absolute bottom-[15%] right-[25%] w-[300px] h-[300px] bg-blue-200/30 rounded-full blur-[90px] pointer-events-none"></div>
+        </>
+      )}
 
       {/* Main container */}
-      <div className="w-full max-w-5xl bg-[#121124]/40 backdrop-blur-xl flex flex-col rounded-2xl shadow-2xl border border-white/[0.07] overflow-hidden h-[92vh] transition-all duration-300">
-        <Header />
-        <MessageArea messages={messages} />
-        <InputBar currentMessage={currentMessage} setCurrentMessage={setCurrentMessage} onSubmit={handleSubmit} />
+      <div className={`w-full max-w-5xl backdrop-blur-xl flex flex-col rounded-2xl shadow-2xl border transition-all duration-300 h-[92vh] ${isDarkMode ? 'bg-[#121124]/40 border-white/[0.07]' : 'bg-white/80 border-black/[0.06] shadow-xl'}`}>
+        <Header isDarkMode={isDarkMode} onToggleTheme={toggleTheme} />
+        <MessageArea messages={messages} isDarkMode={isDarkMode} />
+        <InputBar currentMessage={currentMessage} setCurrentMessage={setCurrentMessage} onSubmit={handleSubmit} isDarkMode={isDarkMode} />
       </div>
     </div>
   );
