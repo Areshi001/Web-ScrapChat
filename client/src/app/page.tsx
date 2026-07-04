@@ -90,7 +90,9 @@ const Home = () => {
         ]);
 
         // Create URL with checkpoint ID and optional user credentials if they exist
-        const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+        const rawApiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+        // Render's 'host' property gives a bare hostname — prepend https:// if no protocol is present
+        const apiBase = rawApiBase.startsWith('http') ? rawApiBase : `https://${rawApiBase}`;
         const params = new URLSearchParams();
         if (checkpointId) params.append("checkpoint_id", checkpointId);
         
