@@ -102,7 +102,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## 🙏 Acknowledgments
 
-- Inspired by the UI and functionality of [Perplexity.ai](https://www.perplexity.ai/)
 - Built with [Next.js](https://nextjs.org/), [React](https://reactjs.org/), [FastAPI](https://fastapi.tiangolo.com/), and [LangGraph](https://github.com/langchain-ai/langgraph)
 - Powered by [DeepSeek v4 (via OpenRouter)](https://openrouter.ai/) and [Tavily Search API](https://tavily.com/)
 
