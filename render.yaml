@@ -4,7 +4,7 @@ services:
     name: web-scrapchat-backend
     env: docker
     dockerContext: ./server
-    dockerfilePath: Dockerfile
+    dockerfilePath: server/Dockerfile
     plan: free
     envVars:
       - key: OPENROUTER_API_KEY
@@ -21,7 +21,7 @@ services:
     name: web-scrapchat-frontend
     env: docker
     dockerContext: ./client
-    dockerfilePath: Dockerfile
+    dockerfilePath: client/Dockerfile
     plan: free
     envVars:
       - key: NEXT_PUBLIC_API_URL
