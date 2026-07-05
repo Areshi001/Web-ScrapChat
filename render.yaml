@@ -25,7 +25,4 @@ services:
     plan: free
     envVars:
       - key: INTERNAL_API_URL
-        fromService:
-          type: web
-          name: web-scrapchat-backend
-          property: hostport
+        value: https://web-scrapchat-backend.onrender.com
