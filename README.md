@@ -42,6 +42,37 @@ Instead of using traditional blocking HTTP requests, client-server communication
    - As the model responds, the server streams the content via continuous `content` events.
 6. **Connection Closure**: Once the response is finished, the server sends an `end` event to close the connection cleanly.
 
+```mermaid
+sequenceDiagram
+    participant UI as Next.js Client
+    participant API as FastAPI Backend
+    participant LLM as OpenRouter / DeepSeek
+    participant Tool as Tavily Search API
+
+    UI->>API: Open EventSource connection (/api/chat_stream)
+    API->>API: Create or resume thread checkpoint (session memory)
+    API->>LLM: Invoke LangGraph agent with conversation history
+    LLM-->>API: Decides: direct response or search tool call
+
+    alt Search required
+        API->>UI: Event: search_start (query text)
+        API->>Tool: Execute Tavily search with query
+        Tool-->>API: Return results and images
+        API->>UI: Event: search_results (source URLs)
+        API->>UI: Event: search_images (visual links)
+        API->>LLM: Feed search results into agent context
+    end
+
+    loop Stream response tokens
+        LLM-->>API: Emit content chunk
+        API->>UI: Event: content (streamed token)
+    end
+
+    API->>UI: Event: end (close SSE connection)
+```
+
+
+
 ## Getting Started
 
 ### Prerequisites
