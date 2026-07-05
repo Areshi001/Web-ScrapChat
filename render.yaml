@@ -24,7 +24,7 @@ services:
     dockerfilePath: client/Dockerfile
     plan: free
     envVars:
-      - key: NEXT_PUBLIC_API_URL
+      - key: INTERNAL_API_URL
         fromService:
           type: web
           name: web-scrapchat-backend
