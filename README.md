@@ -2,7 +2,7 @@
 
 A modern, responsive AI search-chat assistant with integrated web search functionality. Web ScrapChat provides a clean, premium dark glassmorphic user interface, combining conversational AI with real-time web scraping and search capabilities.
 
-## ✨ Features
+## Features
 
 - **Real-time AI Responses** - Stream AI responses dynamically as they are generated.
 - **Integrated Web Search** - AI can search the web for up-to-date information using Tavily Search.
@@ -11,7 +11,7 @@ A modern, responsive AI search-chat assistant with integrated web search functio
 - **Conversation Memory** - Maintains context throughout your chat session.
 - **Process Transparency** - Clear status progression display (Searching the Web, Analyzing Resources, Synthesizing Answer).
 
-## 🏗️ Architecture
+## Architecture
 
 Web ScrapChat follows a client-server architecture:
 
@@ -26,7 +26,23 @@ Web ScrapChat follows a client-server architecture:
 - Support for OpenRouter API endpoints and DeepSeek models (with local Ollama compatibility fallback).
 - Integration with Tavily Search API for web search capabilities.
 
-## 🚀 Getting Started
+## Communication and Streaming Flow (SSE)
+
+Instead of using traditional blocking HTTP requests, client-server communication is managed through Server-Sent Events (SSE) via the `/chat_stream/{message}` endpoint:
+
+1. **Connection Initiation**: The Next.js client starts an `EventSource` connection to the FastAPI server.
+2. **Session Verification**: The server checks the thread ID (checkpoint) to maintain session continuity.
+3. **Agent Invocation**: The server triggers the LangGraph agent loop with the conversation history.
+4. **Tool Phase (If Required)**:
+   - If the model decides a search is needed, it triggers the custom search tool.
+   - The server pushes a `search_start` event to update the client's search status timeline.
+   - After retrieving results from Tavily, the server emits `search_results` (source URLs) and `search_images` (visual links) to the client.
+5. **Synthesis and Streaming**:
+   - The search results are injected into the agent's context.
+   - As the model responds, the server streams the content via continuous `content` events.
+6. **Connection Closure**: Once the response is finished, the server sends an `end` event to close the connection cleanly.
+
+## Getting Started
 
 ### Prerequisites
 
@@ -81,7 +97,7 @@ Web ScrapChat follows a client-server architecture:
 
 3. **Open your browser and navigate to http://localhost:3000**   
 
-## 🔍 How It Works
+## How It Works
 
 1. **User sends a query** through the chat interface.
 2. **Server processes the context** using LangGraph and the DeepSeek v4 model on OpenRouter.
@@ -92,16 +108,15 @@ Web ScrapChat follows a client-server architecture:
 5. **Response is streamed** back to the client in real-time.
 6. **Search stages** (Searching, Analyzing, Synthesizing) are displayed to the user via animated status widgets.
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-## 📝 License
+## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - Built with [Next.js](https://nextjs.org/), [React](https://reactjs.org/), [FastAPI](https://fastapi.tiangolo.com/), and [LangGraph](https://github.com/langchain-ai/langgraph)
 - Powered by [DeepSeek v4 (via OpenRouter)](https://openrouter.ai/) and [Tavily Search API](https://tavily.com/)
-
