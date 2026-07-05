@@ -34,10 +34,42 @@ const Home = () => {
   const [checkpointId, setCheckpointId] = useState<string | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(true);
 
+  // Modal Visibility States
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+
+  // Active Key States
+  const [orKey, setOrKey] = useState("");
+  const [tavKey, setTavKey] = useState("");
+  const [modelName, setModelName] = useState("deepseek/deepseek-v4-flash");
+
+  // Input bindings for modals
+  const [modalOrKey, setModalOrKey] = useState("");
+  const [modalTavKey, setModalTavKey] = useState("");
+  const [modalModelName, setModalModelName] = useState("deepseek/deepseek-v4-flash");
+
   useEffect(() => {
+    // Theme setup
     const savedTheme = localStorage.getItem("scrapchat_theme");
     if (savedTheme === "light") {
       setIsDarkMode(false);
+    }
+
+    // Credentials setup
+    const storedOrKey = localStorage.getItem("scrapchat_openrouter_key");
+    const storedTavKey = localStorage.getItem("scrapchat_tavily_key");
+    const storedModel = localStorage.getItem("scrapchat_model_name") || "deepseek/deepseek-v4-flash";
+
+    if (storedOrKey) setOrKey(storedOrKey);
+    if (storedTavKey) setTavKey(storedTavKey);
+    if (storedModel) setModelName(storedModel);
+
+    // Prompt for onboarding if credentials are not configured yet
+    if (!storedOrKey || !storedTavKey) {
+      setModalOrKey(storedOrKey || "");
+      setModalTavKey(storedTavKey || "");
+      setModalModelName(storedModel);
+      setShowOnboarding(true);
     }
   }, []);
 
@@ -49,10 +81,30 @@ const Home = () => {
     });
   };
 
+  const openSettings = () => {
+    setModalOrKey(localStorage.getItem("scrapchat_openrouter_key") || "");
+    setModalTavKey(localStorage.getItem("scrapchat_tavily_key") || "");
+    setModalModelName(localStorage.getItem("scrapchat_model_name") || "deepseek/deepseek-v4-flash");
+    setShowSettings(true);
+  };
+
+  const handleSaveCredentials = (e: React.FormEvent) => {
+    e.preventDefault();
+    localStorage.setItem("scrapchat_openrouter_key", modalOrKey);
+    localStorage.setItem("scrapchat_tavily_key", modalTavKey);
+    localStorage.setItem("scrapchat_model_name", modalModelName);
+
+    setOrKey(modalOrKey);
+    setTavKey(modalTavKey);
+    setModelName(modalModelName);
+
+    setShowOnboarding(false);
+    setShowSettings(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (currentMessage.trim()) {
-
       // First add the user message to the chat
       const newMessageId = messages.length > 0 ? Math.max(...messages.map(msg => msg.id)) + 1 : 1;
 
@@ -89,12 +141,18 @@ const Home = () => {
           }
         ]);
 
-        // Create URL with checkpoint ID and optional user credentials if they exist
-        const rawApiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-        // Render's 'host' property gives a bare hostname — prepend https:// if no protocol is present
-        const apiBase = rawApiBase.startsWith('http') ? rawApiBase : `https://${rawApiBase}`;
+        const apiBase = '/api';
         const params = new URLSearchParams();
         if (checkpointId) params.append("checkpoint_id", checkpointId);
+        
+        // Retrieve credentials and append them to requests
+        const localOrKey = typeof window !== 'undefined' ? localStorage.getItem("scrapchat_openrouter_key") : orKey;
+        const localModel = typeof window !== 'undefined' ? localStorage.getItem("scrapchat_model_name") : modelName;
+        const localTavKey = typeof window !== 'undefined' ? localStorage.getItem("scrapchat_tavily_key") : tavKey;
+        
+        if (localOrKey) params.append("openrouter_key", localOrKey);
+        if (localModel) params.append("model_name", localModel);
+        if (localTavKey) params.append("tavily_key", localTavKey);
         
         const queryString = params.toString();
         const url = `${apiBase}/chat_stream/${encodeURIComponent(userInput)}${queryString ? `?${queryString}` : ""}`;
@@ -114,7 +172,6 @@ const Home = () => {
               // Store the checkpoint ID for future requests
               setCheckpointId(data.checkpoint_id);
             }
-
             else if (data.type === 'content') {
               streamedContent += data.content;
               hasReceivedContent = true;
@@ -292,10 +349,146 @@ const Home = () => {
 
       {/* Main container */}
       <div className={`w-full max-w-5xl backdrop-blur-xl flex flex-col rounded-2xl shadow-2xl border transition-all duration-300 h-[92vh] ${isDarkMode ? 'bg-[#121124]/40 border-white/[0.07]' : 'bg-white/80 border-black/[0.06] shadow-xl'}`}>
-        <Header isDarkMode={isDarkMode} onToggleTheme={toggleTheme} />
+        <Header isDarkMode={isDarkMode} onToggleTheme={toggleTheme} onOpenSettings={openSettings} />
         <MessageArea messages={messages} isDarkMode={isDarkMode} />
         <InputBar currentMessage={currentMessage} setCurrentMessage={setCurrentMessage} onSubmit={handleSubmit} isDarkMode={isDarkMode} />
       </div>
+
+      {/* Onboarding & Settings Modals */}
+      {(showOnboarding || showSettings) && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-6 animate-in fade-in duration-300">
+          <div className={`w-full max-w-2xl rounded-2xl shadow-2xl border overflow-hidden transition-all duration-300 ${
+            isDarkMode ? "bg-[#121124] border-white/10 text-white" : "bg-white border-black/10 text-gray-800"
+          }`}>
+            <div className="flex flex-col md:flex-row min-h-[400px]">
+              {/* Left Column: Form */}
+              <div className="flex-1 p-8 border-b md:border-b-0 md:border-r border-white/10">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-bold">API Configurations</h3>
+                  {showSettings && (
+                    <button 
+                      onClick={() => setShowSettings(false)}
+                      className={`p-1.5 rounded-lg transition-colors ${
+                        isDarkMode ? "hover:bg-white/5 text-gray-400 hover:text-white" : "hover:bg-black/5 text-gray-600 hover:text-black"
+                      }`}
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+                
+                <form onSubmit={handleSaveCredentials} className="space-y-4 text-sm">
+                  <div>
+                    <label className="block font-semibold mb-1 text-xs">OpenRouter API Key</label>
+                    <input 
+                      type="password" 
+                      required
+                      value={modalOrKey}
+                      onChange={(e) => setModalOrKey(e.target.value)}
+                      placeholder="sk-or-v1-..."
+                      className={`w-full border rounded-xl p-3 text-sm focus:outline-none focus:border-purple-500 transition-colors ${
+                        isDarkMode ? "bg-white/5 border-white/10 text-white" : "bg-gray-50 border-black/10 text-gray-900"
+                      }`}
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold mb-1 text-xs">OpenRouter Model Name</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={modalModelName}
+                      onChange={(e) => setModalModelName(e.target.value)}
+                      placeholder="deepseek/deepseek-v4-flash"
+                      className={`w-full border rounded-xl p-3 text-sm focus:outline-none focus:border-purple-500 transition-colors ${
+                        isDarkMode ? "bg-white/5 border-white/10 text-white" : "bg-gray-50 border-black/10 text-gray-900"
+                      }`}
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold mb-1 text-xs">Tavily Search API Key</label>
+                    <input 
+                      type="password" 
+                      required
+                      value={modalTavKey}
+                      onChange={(e) => setModalTavKey(e.target.value)}
+                      placeholder="tvly-..."
+                      className={`w-full border rounded-xl p-3 text-sm focus:outline-none focus:border-purple-500 transition-colors ${
+                        isDarkMode ? "bg-white/5 border-white/10 text-white" : "bg-gray-50 border-black/10 text-gray-900"
+                      }`}
+                    />
+                  </div>
+
+                  <div className="pt-4 flex justify-end gap-3">
+                    {showSettings && (
+                      <button 
+                        type="button"
+                        onClick={() => setShowSettings(false)}
+                        className={`px-5 py-2.5 rounded-xl border text-xs font-semibold transition-colors cursor-pointer ${
+                          isDarkMode ? "bg-white/5 hover:bg-white/10 border-white/10" : "bg-gray-100 hover:bg-gray-200 border-black/10"
+                        }`}
+                      >
+                        Cancel
+                      </button>
+                    )}
+                    <button 
+                      type="submit"
+                      className="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-semibold shadow-md transition-colors cursor-pointer"
+                    >
+                      Connect & Launch
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* Right Column: Key Links and Info */}
+              <div className={`w-full md:w-[240px] p-8 flex flex-col justify-between text-xs ${
+                isDarkMode ? "bg-white/5" : "bg-gray-50"
+              }`}>
+                <div>
+                  <h4 className="font-bold text-sm mb-3">Obtain API Keys</h4>
+                  <p className={`mb-5 leading-relaxed ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>
+                    To interact with the chat assistant and trigger live web scraping, you must supply your own service keys:
+                  </p>
+                  
+                  <div className="space-y-4">
+                    <a 
+                      href="https://openrouter.ai/keys" 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="flex items-center justify-between p-3 rounded-xl border hover:border-purple-500/50 bg-purple-500/5 text-purple-500 hover:bg-purple-500/10 transition-all font-semibold"
+                    >
+                      <span>OpenRouter Keys</span>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+                    
+                    <a 
+                      href="https://tavily.com" 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="flex items-center justify-between p-3 rounded-xl border hover:border-blue-500/50 bg-blue-500/5 text-blue-500 hover:bg-blue-500/10 transition-all font-semibold"
+                    >
+                      <span>Tavily Search API</span>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+                  </div>
+                </div>
+
+                <div className={`mt-6 leading-relaxed border-t pt-4 ${
+                  isDarkMode ? "border-white/10 text-gray-500" : "border-black/10 text-gray-500"
+                }`}>
+                  Keys are stored exclusively in your local web browser (`localStorage`) and never uploaded to any remote storage.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
