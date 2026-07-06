@@ -1,159 +1,110 @@
 # Web ScrapChat
 
-A modern, responsive AI search-chat assistant with integrated web search functionality. Web ScrapChat provides a clean, premium dark glassmorphic user interface, combining conversational AI with real-time web scraping and search capabilities.
+A full-stack AI search-chat application with a premium glassmorphic frontend, FastAPI backend, and real-time SSE streaming. Unlike the PDF-focused RAG bot in this portfolio, this project is centered on web-first search, live response streaming, and client-server orchestration.
 
-## Features
+**Status:** Functional prototype  
+**Stack:** Next.js, React, Tailwind CSS, FastAPI, LangGraph, OpenRouter, Tavily  
+**Focus:** Streaming UX, search orchestration, full-stack AI application design
 
-- **Real-time AI Responses** - Stream AI responses dynamically as they are generated.
-- **Integrated Web Search** - AI can search the web for up-to-date information using Tavily Search.
-- **Premium Dark UI** - Modern glassmorphic dark theme with glowing state indicators and smooth micro-animations.
-- **Rich Markdown Formatting** - Complete inline parsing for bolding, lists, code snippets, and hyperlinks.
-- **Conversation Memory** - Maintains context throughout your chat session.
-- **Process Transparency** - Clear status progression display (Searching the Web, Analyzing Resources, Synthesizing Answer).
+## Why this project
 
-## Architecture
+Search assistants feel dramatically better when the user can see the system working in real time. This repo focuses on the product experience around that idea: progress signals, streaming responses, tool-aware orchestration, and a client-server split that is deployable beyond a notebook demo.
 
-Web ScrapChat follows a client-server architecture:
+## Core capabilities
 
-### Client (Next.js + React)
-- Modern React application built with Next.js and custom CSS styling.
-- Real-time streaming updates using Server-Sent Events (SSE).
-- Custom markdown parser for beautiful message rendering.
+- Stream responses token by token to the frontend.
+- Trigger live web search when the model needs external information.
+- Maintain conversational context through session checkpoints.
+- Show explicit search stages such as searching, analyzing, and synthesizing.
+- Separate the interface and backend cleanly for deployment.
 
-### Server (FastAPI + LangGraph)
-- Python backend using FastAPI for streaming API endpoints.
-- LangGraph framework for orchestrating conversation flow, memory, and search tool triggers.
-- Support for OpenRouter API endpoints and DeepSeek models (with local Ollama compatibility fallback).
-- Integration with Tavily Search API for web search capabilities.
+## Architecture list
 
-## Communication and Streaming Flow (SSE)
+1. Client layer
+   a. Next.js app for chat UI, status indicators, and markdown rendering  
+   b. Proxy route for browser-safe SSE streaming
+2. Backend layer
+   a. FastAPI service for streaming endpoints  
+   b. LangGraph agent loop for tool decisions and memory
+3. Search and model layer
+   a. Tavily for external search  
+   b. OpenRouter / DeepSeek for response synthesis
+4. Delivery layer
+   a. SSE events for search state and streamed content  
+   b. Session continuity across interactions
 
-Instead of using traditional blocking HTTP requests, client-server communication is managed through Server-Sent Events (SSE) via the `/api/chat_stream/{message}` route, proxying requests securely through the Next.js server to prevent client-side domain resolution and CORS issues:
-
-1. **Connection Initiation**: The client browser starts an `EventSource` connection to the Next.js Route Handler at `/api/chat_stream/{message}`.
-2. **Request Proxying**: The Next.js server acts as a proxy, forwarding the stream request to the FastAPI backend's URL (`INTERNAL_API_URL`).
-3. **Session Verification**: The FastAPI server checks the thread ID (checkpoint) to maintain session continuity.
-4. **Agent Invocation**: The FastAPI server triggers the LangGraph agent loop with the conversation history.
-5. **Tool Phase (If Required)**:
-   - If the model decides a search is needed, it triggers the custom search tool.
-   - The FastAPI server pushes a `search_start` event through the proxy to update the client's search status timeline.
-   - After retrieving results from Tavily, the server emits `search_results` (source URLs) and `search_images` (visual links) through the proxy to the client.
-6. **Synthesis and Streaming**:
-   - The search results are injected into the agent's context.
-   - As the model responds, the FastAPI server streams the content via continuous `content` events through the proxy, which forwards them directly to the client browser in real-time.
-7. **Connection Closure**: Once the response is finished, the FastAPI server sends an `end` event to close the connection cleanly.
+## Implementation diagram
 
 ```mermaid
-sequenceDiagram
-    participant UI as Browser (Next.js Client)
-    participant Proxy as Next.js Route Handler Proxy
-    participant API as FastAPI Backend
-    participant LLM as OpenRouter / DeepSeek
-    participant Tool as Tavily Search API
-
-    UI->>Proxy: Open EventSource connection (/api/chat_stream)
-    Proxy->>API: Forward stream request (HTTPS fetch to backend)
-    API->>API: Create or resume thread checkpoint (session memory)
-    API->>LLM: Invoke LangGraph agent with conversation history
-    LLM-->>API: Decides: direct response or search tool call
-
-    alt Search required
-        API->>Proxy: Event: search_start (query text)
-        Proxy->>UI: Forward search_start
-        API->>Tool: Execute Tavily search with query
-        Tool-->>API: Return results and images
-        API->>Proxy: Event: search_results & search_images
-        Proxy->>UI: Forward search_results & search_images
-        API->>LLM: Feed search results into agent context
-    end
-
-    loop Stream response tokens
-        LLM-->>API: Emit content chunk
-        API->>Proxy: Event: content (streamed token)
-        Proxy->>UI: Forward content token
-    end
-
-    API->>Proxy: Event: end (close connection)
-    Proxy->>UI: Forward end (close connection)
+flowchart LR
+    User[User Query] --> Client[Next.js Client]
+    Client --> Proxy[Route Handler Proxy]
+    Proxy --> API[FastAPI Backend]
+    API --> Graph[LangGraph Agent]
+    Graph --> Decide{Need Web Search?}
+    Decide -->|Yes| Tavily[Tavily Search]
+    Decide -->|No| LLM[OpenRouter / DeepSeek]
+    Tavily --> LLM
+    LLM --> SSE[SSE Content Stream]
+    SSE --> Proxy
+    Proxy --> Client
+    Client --> UI[Chat UI + Search Status Timeline]
 ```
 
+## Project structure
 
+```text
+Web-ScrapChat/
+├── client/              # Next.js frontend
+│   ├── src/app/         # App router and proxy route
+│   └── src/components/  # Chat interface components
+├── server/              # FastAPI + LangGraph backend
+│   ├── app.py
+│   └── requirements.txt
+├── docker-compose.yml
+├── render.yaml
+└── README.md
+```
 
-## Getting Started
+## Run locally
 
-### Prerequisites
+### Backend
 
-- Node.js 18+
-- Python 3.10+
-- OpenRouter API Key (or Ollama for local setup)
-- Tavily API Key
+```bash
+cd server
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn app:app --reload
+```
 
-### Installation
+### Frontend
 
-1. **Navigate to the project directory**
-   ```bash
-   cd Web_ScrapChat
-   ```
+```bash
+cd client
+npm install
+npm run dev
+```
 
-2. **Set up the server**
-   ```bash
-   cd server
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
+Add these variables in the server environment:
 
-3. **Configure environment variables**  
-   Create a `.env` file in the server directory:
-   ```env
-   OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
-   OPENROUTER_MODEL=deepseek/deepseek-v4-flash
-   OPENROUTER_API_KEY=your_openrouter_api_key
-   TAVILY_API_KEY=your_tavily_api_key
-   ```
-    
-4. **Set up the client**
-   ```bash
-   cd ../client
-   npm install
-   ```
+```env
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+OPENROUTER_MODEL=deepseek/deepseek-v4-flash
+OPENROUTER_API_KEY=your_openrouter_api_key
+TAVILY_API_KEY=your_tavily_api_key
+```
 
-### Running the Application
+## What this demonstrates
 
-1. **Start the server**
-   ```bash
-   cd server
-   uvicorn app:app --reload
-   ```
+- Full-stack separation between interface, proxy, and agent backend
+- Streaming-first UX design for AI products
+- Search-tool orchestration through LangGraph
+- Deployable AI app structure instead of a single-file prototype
 
-2. **Start the client**
-   ```bash
-   cd client
-   npm run dev
-   ```
+## Next improvements
 
-3. **Open your browser and navigate to http://localhost:3000**   
-
-## How It Works
-
-1. **User sends a query** through the chat interface.
-2. **Server processes the context** using LangGraph and the DeepSeek v4 model on OpenRouter.
-3. **AI decides** whether to trigger the Tavily Search tool or answer directly.
-4. If search is needed:
-   - The search query is executed through the Tavily Search API.
-   - Page sources are returned, analyzed, and synthesized by the LLM.
-5. **Response is streamed** back to the client in real-time.
-6. **Search stages** (Searching, Analyzing, Synthesizing) are displayed to the user via animated status widgets.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgments
-
-- Built with [Next.js](https://nextjs.org/), [React](https://reactjs.org/), [FastAPI](https://fastapi.tiangolo.com/), and [LangGraph](https://github.com/langchain-ai/langgraph)
-- Powered by [DeepSeek v4 (via OpenRouter)](https://openrouter.ai/) and [Tavily Search API](https://tavily.com/)
+- Stronger source cards and result ranking summaries
+- Better persistence beyond thread checkpoints
+- Authentication and saved chat sessions
+- More explicit failure handling for tool and API errors
