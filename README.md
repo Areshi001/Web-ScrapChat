@@ -109,7 +109,7 @@ TAVILY_API_KEY=your_tavily_api_key
 <details>
 <summary>🎥 Click to view demo video</summary>
 
-<video src="https://github.com/Areshi001/Web-ScrapChat/raw/main/assets/Demo%20Scrape%20Chat%20video.mp4" controls width="100%"></video>
+<video src="https://raw.githubusercontent.com/Areshi001/Web-ScrapChat/main/assets/Demo%20Scrape%20Chat%20video.mp4" controls width="100%"></video>
 *Web ScrapChat in action — real-time search streaming and chat*
 
 </details>
