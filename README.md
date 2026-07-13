@@ -97,14 +97,22 @@ TAVILY_API_KEY=your_tavily_api_key
 
 ## Demo / Screenshots
 
+<details>
+<summary>🖼️ Click to view screenshots</summary>
+
 ![Web ScrapChat - Main Interface](assets/Capture.PNG)
 ![Web ScrapChat - Search Results](assets/Capture1.PNG)
 ![Web ScrapChat - Chat View](assets/Capture2.PNG)
 
-### 🎥 Demo Video
+</details>
 
-<video src="assets/Demo%20Scrape%20Chat%20video.mp4" controls width="100%"></video>
+<details>
+<summary>🎥 Click to view demo video</summary>
+
+<video src="https://github.com/Areshi001/Web-ScrapChat/raw/main/assets/Demo%20Scrape%20Chat%20video.mp4" controls width="100%"></video>
 *Web ScrapChat in action — real-time search streaming and chat*
+
+</details>
 
 ---
 
