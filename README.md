@@ -95,6 +95,19 @@ OPENROUTER_API_KEY=your_openrouter_api_key
 TAVILY_API_KEY=your_tavily_api_key
 ```
 
+## Demo / Screenshots
+
+![Web ScrapChat - Main Interface](assets/Capture.PNG)
+![Web ScrapChat - Search Results](assets/Capture1.PNG)
+![Web ScrapChat - Chat View](assets/Capture2.PNG)
+
+### 🎥 Demo Video
+
+<video src="assets/Demo%20Scrape%20Chat%20video.mp4" controls width="100%"></video>
+*Web ScrapChat in action — real-time search streaming and chat*
+
+---
+
 ## What this demonstrates
 
 - Full-stack separation between interface, proxy, and agent backend
